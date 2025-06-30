@@ -554,6 +554,61 @@ void Model::savePly(const std::string &filename, int step){
     o.close();
 }
 
+void Model::save(std::function<void(SplatMeta&)> ExportSplatMeta,std::function<void(Splat&,std::span<float>,std::span<float>)> ExportSplat)
+{
+	SplatMeta meta;
+	meta.pointCount = means.size(0);
+
+	// Match Inria's version
+	torch::Tensor featuresRestCpu = featuresRest.cpu().transpose(1, 2).reshape({meta.pointCount, -1});
+	
+	meta.featuresDcCount = featuresDc.size(1);
+	meta.featuresRestCount = featuresRestCpu.size(1);
+	ExportSplatMeta(meta);
+	
+
+	
+	float zeros[] = { 0.0f, 0.0f, 0.0f };
+	
+	torch::Tensor meansCpu = keepCrs ? (means.cpu() / scale) + translation : means.cpu();
+	torch::Tensor featuresDcCpu = featuresDc.cpu();
+	torch::Tensor opacitiesCpu = opacities.cpu();
+	torch::Tensor scalesCpu = keepCrs ? torch::log((torch::exp(scales.cpu()) / scale)) : scales.cpu();
+	torch::Tensor quatsCpu = quats.cpu();
+	
+	for (size_t i = 0; i < meta.pointCount; i++) 
+	{
+		auto* xyz = reinterpret_cast<const float*>( meansCpu[i].data_ptr() );
+
+		//, sizeof(float) * featuresDcCpu.size(1))
+		auto* pFeatureDcs = reinterpret_cast<float*>(featuresDcCpu[i].data_ptr());
+		auto* pFeatureRests = reinterpret_cast<float*>(featuresRestCpu[i].data_ptr());
+		auto* pOpacity = reinterpret_cast<const float*>(opacitiesCpu[i].data_ptr());
+		auto* scale3 = reinterpret_cast<const float*>( scalesCpu[i].data_ptr() );
+		auto* quaternion4 = reinterpret_cast<const float*>( quatsCpu[i].data_ptr() );
+		
+		Splat splat;
+		splat.x = xyz[0];
+		splat.y = xyz[1];
+		splat.z = xyz[2];
+		splat.scalex = scale3[0];
+		splat.scaley = scale3[1];
+		splat.scalez = scale3[2];
+		
+		//	gr: note this order! the trainer writes 0123 but first is w, not x (renderer's correct for this!)
+		splat.rotw = quaternion4[0];
+		splat.rotx = quaternion4[1];
+		splat.roty = quaternion4[2];
+		splat.rotz = quaternion4[3];
+		
+		std::span<float> FeatureDcs( pFeatureDcs, meta.featuresDcCount );
+		std::span<float> FeatureRests( pFeatureRests, meta.featuresRestCount );
+
+		ExportSplat(splat, FeatureDcs, FeatureRests );
+	}
+	
+}
+
 void Model::saveSplat(const std::string &filename){
     std::ofstream o(filename, std::ios::binary);
     int numPoints = means.size(0);

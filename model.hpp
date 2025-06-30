@@ -10,6 +10,7 @@
 #include "ssim.hpp"
 #include "input_data.hpp"
 #include "optim_scheduler.hpp"
+#include <span>
 
 using namespace torch::indexing;
 using namespace torch::autograd;
@@ -18,6 +19,24 @@ torch::Tensor randomQuatTensor(long long n);
 torch::Tensor projectionMatrix(float zNear, float zFar, float fovX, float fovY, const torch::Device &device);
 torch::Tensor psnr(const torch::Tensor& rendered, const torch::Tensor& gt);
 torch::Tensor l1(const torch::Tensor& rendered, const torch::Tensor& gt);
+
+struct Splat
+{
+	float x,y,z;
+	//float nx,ny,nz;
+	//float dc features[]
+	//	rest_features[]
+	float opacity;
+	float scalex,scaley,scalez;
+	float rotx,roty,rotz,rotw;
+};
+
+struct SplatMeta
+{
+	int64_t pointCount = 0;
+	int64_t featuresDcCount = 0;
+	int64_t featuresRestCount = 0;
+};
 
 struct Model{
   Model(const InputData &inputData, int numCameras,
@@ -73,6 +92,7 @@ struct Model{
   void savePly(const std::string &filename, int step);
   void saveSplat(const std::string &filename);
   void saveDebugPly(const std::string &filename, int step);
+  void save(std::function<void(SplatMeta&)> ExportSplatMeta,std::function<void(Splat&,std::span<float>,std::span<float>)> ExportSplat);
   int loadPly(const std::string &filename);
   torch::Tensor mainLoss(torch::Tensor &rgb, torch::Tensor &gt, float ssimWeight);
 
