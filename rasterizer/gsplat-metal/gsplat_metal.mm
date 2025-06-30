@@ -41,71 +41,88 @@ unsigned num_sh_bases(const unsigned degree) {
 @end
 
 MetalContext* init_gsplat_metal_context() {
-    MetalContext* ctx = (MetalContext*)malloc(sizeof(MetalContext));
-    // Retrieve the default Metal device
-    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
-
-    // Configure context
-    ctx->device = device;
-    ctx->queue  = [ctx->device newCommandQueue];
-    ctx->d_queue = torch::mps::get_dispatch_queue();
-
-    NSError *error = nil;
-
-    id<MTLLibrary> metal_library = nil;
-    NSBundle * bundle = [NSBundle bundleForClass:[DummyClassForPathHack class]];
-    NSString * path_lib = [bundle pathForResource:@"default" ofType:@"metallib"];
-
-    if (path_lib != nil) {
-        // pre-compiled library found
-        NSURL * libURL = [NSURL fileURLWithPath:path_lib];
-        printf("%s: loading '%s'\n", __func__, [path_lib UTF8String]);
-
-        metal_library = [ctx->device newLibraryWithURL:libURL error:&error];
-        if (error) {
-            printf("%s: error: %s\n", __func__, [[error description] UTF8String]);
-            return NULL;
-        }
-        printf("%s: loaded '%s', functions: %s\n", __func__, [path_lib UTF8String], [[[metal_library functionNames] componentsJoinedByString:@", "] UTF8String]);
-    } else {
-        printf("%s: default.metallib not found, loading from source\n", __func__);
-
-        NSString * source_path = [[@ __FILE__ stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"gsplat_metal.metal"];
-        printf("%s: loading '%s'\n", __func__, [source_path UTF8String]);
-
-        NSString * src = [NSString stringWithContentsOfFile:source_path encoding:NSUTF8StringEncoding error:&error];
-        if (error) {
-            printf("%s: error: %s\n", __func__, [[error description] UTF8String]);
-            return NULL;
-        }
-
-        @autoreleasepool {
-            // dictionary of preprocessor macros
-            NSMutableDictionary * prep = [NSMutableDictionary dictionary];
-
-            MTLCompileOptions* options = [MTLCompileOptions new];
-            options.preprocessorMacros = prep;
-
-            metal_library = [ctx->device newLibraryWithSource:src options:options error:&error];
-            if (error) {
-                printf("%s: error: %s\n", __func__, [[error description] UTF8String]);
-                return NULL;
-            }
-        }
-    }
-
+	MetalContext* ctx = (MetalContext*)malloc(sizeof(MetalContext));
+	// Retrieve the default Metal device
+	id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+	
+	// Configure context
+	ctx->device = device;
+	ctx->queue  = [ctx->device newCommandQueue];
+	ctx->d_queue = torch::mps::get_dispatch_queue();
+	
+	NSError *error = nil;
+	
+	id<MTLLibrary> metal_library = nil;
+	NSBundle * bundle = [NSBundle bundleForClass:[DummyClassForPathHack class]];
+	NSString * path_lib = [bundle pathForResource:@"default" ofType:@"metallib"];
+	
+	if (path_lib != nil) {
+		// pre-compiled library found
+		NSURL * libURL = [NSURL fileURLWithPath:path_lib];
+		printf("%s: loading '%s'\n", __func__, [path_lib UTF8String]);
+		
+		metal_library = [ctx->device newLibraryWithURL:libURL error:&error];
+		if (error) {
+			printf("%s: error: %s\n", __func__, [[error description] UTF8String]);
+			return NULL;
+		}
+		printf("%s: loaded '%s', functions: %s\n", __func__, [path_lib UTF8String], [[[metal_library functionNames] componentsJoinedByString:@", "] UTF8String]);
+	} else {
+		printf("%s: default.metallib not found, loading from source\n", __func__);
+		
+		NSString * source_path = [[@ __FILE__ stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"gsplat_metal.metal"];
+		printf("%s: loading '%s'\n", __func__, [source_path UTF8String]);
+		
+		NSString * src = [NSString stringWithContentsOfFile:source_path encoding:NSUTF8StringEncoding error:&error];
+		if (error) {
+			printf("%s: error: %s\n", __func__, [[error description] UTF8String]);
+			return NULL;
+		}
+		
+		@autoreleasepool {
+			// dictionary of preprocessor macros
+			NSMutableDictionary * prep = [NSMutableDictionary dictionary];
+			
+			MTLCompileOptions* options = [MTLCompileOptions new];
+			options.preprocessorMacros = prep;
+			
+			metal_library = [ctx->device newLibraryWithSource:src options:options error:&error];
+			if (error) {
+				printf("%s: error: %s\n", __func__, [[error description] UTF8String]);
+				return NULL;
+			}
+		}
+	}
+	
+	//	load & assign kernel
+	auto LoadKernel = [&ctx,&metal_library](const char* KernelName,__strong id<MTLComputePipelineState>& KernelCpso)
+	{
+		NSError *error = nil;
+		NSString* nameNs = [NSString stringWithCString:KernelName encoding:NSUTF8StringEncoding];
+		id<MTLFunction> metal_function = [metal_library newFunctionWithName:nameNs];
+		printf("%s: load function %s with label: %s\n", __func__, KernelName, [[metal_function label] UTF8String]);
+		KernelCpso = [ctx->device newComputePipelineStateWithFunction:metal_function error:&error];
+#if  ! __has_feature(objc_arc)
+		[metal_function release];
+#endif
+		if (error) 
+		{
+			printf("%s: error: load pipeline error: %s\n", __func__, [[error description] UTF8String]);
+#if  ! __has_feature(objc_arc)
+			[metal_library release];
+#endif
+			return false;
+		}
+		return true;
+	};
+	
 #define GSPLAT_METAL_ADD_KERNEL(NAME) \
-    { \
-        id<MTLFunction> metal_function = [metal_library newFunctionWithName:@#NAME]; \
-        printf("%s: load function %s with label: %s\n", __func__, #NAME, [[metal_function label] UTF8String]); \
-        ctx->NAME ## _cpso = [ctx->device newComputePipelineStateWithFunction:metal_function error:&error]; \
-        [metal_function release]; \
-        if (error) { \
-            printf("%s: error: load pipeline error: %s\n", __func__, [[error description] UTF8String]); \
-            [metal_library release]; \
-            return NULL; \
-        } \
-    }
+{ \
+	if ( !LoadKernel( #NAME, ctx->NAME ## _cpso ) )	\
+	{	\
+		return NULL;	\
+	}	\
+}	
 
     GSPLAT_METAL_ADD_KERNEL(nd_rasterize_backward_kernel);
     GSPLAT_METAL_ADD_KERNEL(nd_rasterize_forward_kernel);
@@ -118,8 +135,10 @@ MetalContext* init_gsplat_metal_context() {
     GSPLAT_METAL_ADD_KERNEL(map_gaussian_to_intersects_kernel);
     GSPLAT_METAL_ADD_KERNEL(get_tile_bin_edges_kernel);
 
-    [metal_library release];
-
+#if  ! __has_feature(objc_arc)
+	[metal_library release];
+#endif
+	
     return ctx;
 }
 
