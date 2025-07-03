@@ -37,6 +37,7 @@ struct Camera{
     std::vector<float> undistortionParameters();
     torch::Tensor getImage(int downscaleFactor);
 
+	void loadImage(torch::Tensor& PixelsRgb,float downscaleFactor);
     void loadImage(float downscaleFactor);
     torch::Tensor K;
     torch::Tensor image;

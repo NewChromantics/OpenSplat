@@ -114,7 +114,25 @@ int main(int argc, char *argv[]){
 
     try{
         InputData inputData = inputDataFromX(projectRoot, colmapImageSourcePath);
-
+/*
+		std::vector<float> xyz{ 0.5,0.5,0.5 };
+		std::vector<uint8_t> rgb{ 1,0,0 };
+		for ( int i=0;	i<0;	i++ )
+		{
+			float x = (std::rand() % 1000) / 1000.f;
+			float y = (std::rand() % 1000) / 1000.f;
+			float z = (std::rand() % 1000) / 1000.f;
+			xyz.push_back( x );
+			xyz.push_back( y );
+			xyz.push_back( z );
+			rgb.push_back( rgb[0] );
+			rgb.push_back( rgb[1] );
+			rgb.push_back( rgb[2] );
+		}
+		inputData.points.rgb = torch::from_blob(rgb.data(), { static_cast<long long>(rgb.size()), 3 }, torch::kU8);	//	uint8_t*3
+		inputData.points.xyz = torch::from_blob(xyz.data(), { static_cast<long long>(xyz.size()), 3 }, torch::kFloat32);	//	float*3
+		*/
+		
         parallel_for(inputData.cameras.begin(), inputData.cameras.end(), [&downScaleFactor](Camera &cam){
             cam.loadImage(downScaleFactor);
         });
