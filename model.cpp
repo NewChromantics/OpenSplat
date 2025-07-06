@@ -497,6 +497,8 @@ void Model::save(const std::string &filename, int step){
 
 void Model::savePly(const std::string &filename, int step){
     std::ofstream o(filename, std::ios::binary);
+	if ( !o.is_open() )
+		throw std::runtime_error(std::string("Failed to open writable ")+filename);
     int numPoints = means.size(0);
 
     o << "ply" << std::endl;
