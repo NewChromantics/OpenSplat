@@ -41,6 +41,7 @@ struct Camera{
 
 	void loadImage(torch::Tensor& PixelsRgb,float downscaleFactor);
     void loadImage(float downscaleFactor);
+	void loadImage(cv::Mat& Pixels,float downscaleFactor);
     torch::Tensor K;
     torch::Tensor image;
 

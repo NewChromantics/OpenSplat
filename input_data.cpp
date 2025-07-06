@@ -37,14 +37,24 @@ torch::Tensor Camera::getIntrinsicsMatrix(){
                           {0.0f, 0.0f, 1.0f}}, torch::kFloat32);
 }
 
+
 void Camera::loadImage(float downscaleFactor){
+	// Populates image and K, then updates the camera parameters
+	// Caution: this function has destructive behaviors
+	// and should be called only once
+	if (image.numel()) std::runtime_error("loadImage already called");
+	std::cout << "Loading " << filePath << std::endl;
+	
+	cv::Mat cImg = imreadRGB(filePath);
+	loadImage( cImg, downscaleFactor);
+	
+}
+
+void Camera::loadImage(cv::Mat& cImg,float downscaleFactor){
     // Populates image and K, then updates the camera parameters
     // Caution: this function has destructive behaviors
     // and should be called only once
     if (image.numel()) std::runtime_error("loadImage already called");
-    std::cout << "Loading " << filePath << std::endl;
-
-    cv::Mat cImg = imreadRGB(filePath);
     
     float rescaleF = 1.0f;
     // If camera intrinsics don't match the image dimensions 

@@ -33,7 +33,8 @@ cv::Mat tensorToImage(const torch::Tensor &t){
     int c = t.sizes()[2];
 
     int type = CV_8UC3;
-    if (c != 3) throw std::runtime_error("Only images with 3 channels are supported");
+    if (c != 3) 
+		throw std::runtime_error("Only images with 3 channels are supported");
 
     cv::Mat image(h, w, type);
     torch::Tensor scaledTensor = (t * 255.0).toType(torch::kU8);
