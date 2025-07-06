@@ -5,7 +5,7 @@
 #include "utils.hpp"
 #include "cv_utils.hpp"
 #include "constants.hpp"
-#include <cxxopts.hpp>
+#include "cxxopts.hpp"
 
 #ifdef USE_VISUALIZATION
 #include "visualizer.hpp"
@@ -142,6 +142,22 @@ int main(int argc, char *argv[]){
         std::vector<Camera> cams = std::get<0>(t);
         Camera *valCam = std::get<1>(t);
 
+		std::cout << "numDownscales=" << numDownscales << std::endl
+				<< "resolutionSchedule=" << resolutionSchedule  << std::endl
+		<< "shDegree=" << shDegree << std::endl
+		<< "shDegreeInterval=" << shDegreeInterval  << std::endl
+		<< "refineEvery=" << refineEvery  << std::endl
+		<< "warmupLength=" << warmupLength  << std::endl
+		<< "resetAlphaEvery=" << resetAlphaEvery  << std::endl
+		<< "densifyGradThresh=" << densifyGradThresh  << std::endl
+		<< "densifySizeThresh=" << densifySizeThresh  << std::endl
+		<< "stopScreenSizeAt=" << stopScreenSizeAt  << std::endl
+		<< "splitScreenSize=" << splitScreenSize << std::endl
+		<< "numIters=" << numIters  << std::endl
+		<< "keepCrs=" << keepCrs << std::endl
+		<< std::endl;
+
+		
         Model model(inputData,
                     cams.size(),
                     numDownscales, resolutionSchedule, shDegree, shDegreeInterval, 

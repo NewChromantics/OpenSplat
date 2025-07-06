@@ -40,6 +40,13 @@ unsigned num_sh_bases(const unsigned degree) {
 @implementation DummyClassForPathHack
 @end
 
+
+//	try and load a compiled metallib from this bundle
+id<MTLLibrary> LoadMetalLibrary(NSString* filename)
+{
+	return nil;
+}
+
 MetalContext* init_gsplat_metal_context() {
     MetalContext* ctx = (MetalContext*)malloc(sizeof(MetalContext));
     // Retrieve the default Metal device
@@ -53,6 +60,9 @@ MetalContext* init_gsplat_metal_context() {
     NSError *error = nil;
 
     id<MTLLibrary> metal_library = nil;
+	
+	//	bundles to try
+	
     NSBundle * bundle = [NSBundle bundleForClass:[DummyClassForPathHack class]];
     NSString * path_lib = [bundle pathForResource:@"default" ofType:@"metallib"];
 
@@ -100,6 +110,7 @@ MetalContext* init_gsplat_metal_context() {
 		NSError *error = nil;
 		NSString* nameNs = [NSString stringWithCString:KernelName encoding:NSUTF8StringEncoding];
 		id<MTLFunction> metal_function = [metal_library newFunctionWithName:nameNs];
+		//	gr: labels seem to be null when loaded from disk instead of pre-compiled
 		printf("%s: load function %s with label: %s\n", __func__, KernelName, [[metal_function label] UTF8String]);
 		KernelCpso = [ctx->device newComputePipelineStateWithFunction:metal_function error:&error];
 #if  ! __has_feature(objc_arc)

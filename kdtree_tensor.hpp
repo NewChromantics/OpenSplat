@@ -17,7 +17,7 @@ struct PointsTensor {
 
     template <typename T>
     inline T *buildIndex() {
-        if (kdTree == nullptr) kdTree = static_cast<void *>(new T(3, *this, { 100 }));
+        if (kdTree == nullptr) kdTree = static_cast<void *>(new T(3, *this, { 200 }));
         return reinterpret_cast<T *>(kdTree);
     }
 

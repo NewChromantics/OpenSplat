@@ -6,6 +6,8 @@
 #include <fstream>
 #include <unordered_map>
 #include <torch/torch.h>
+#include <vector>
+#include <opencv2/calib3d.hpp>
 
 enum CameraType { Perspective };
 struct Camera{
